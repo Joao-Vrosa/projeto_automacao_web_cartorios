@@ -7,7 +7,8 @@ from time import sleep
 from selenium.common.exceptions import NoSuchElementException
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from openpyxl import Workbook
+from openpyxl import Workbook, load_workbook
+from openpyxl.styles import Font, PatternFill
 
 
 def iniciar_driver():
@@ -45,6 +46,39 @@ def iniciar_driver():
 - Salvar em uma planilha Excel
 '''
 
+def inserir_dados_planilha(denominacao, responsavel, atribuicoes, endereco, telefone_e_email, estado_atual):
+
+    # Cria ou recarrega o arquivo
+    try:
+        workbook = load_workbook('cartorios.xlsx')
+    except FileNotFoundError:
+        # Se o arquivo nao existir, cria um novo
+        workbook = Workbook()
+    
+    # Seleciona ou cria uma planilha por estado
+    if estado_atual not in workbook.sheetnames:
+        sheet = workbook.create_sheet(title=estado_atual)
+    else:
+        sheet = workbook[estado_atual]
+    
+    # Criando células do header se a planilha estiver vazia
+    if sheet.max_row == 1:
+        # Criando cedulas do header
+        sheet['A1'] = 'Denominção'
+        sheet['B1'] = 'Responsável'
+        sheet['C1'] = 'Atribuições'
+        sheet['D1'] = 'Endereço'
+        sheet['E1'] = 'Telefone e E-mail'
+        
+        # inserindo estilo ao header
+        for coluna in ['A', 'B', 'C', 'D', 'E']:
+            header = sheet[f'{coluna}1']
+            header.font = Font(color="FFFFFF", bold=True)
+            header.fill = PatternFill(start_color="000000", end_color="000000", fill_type="solid")
+    
+    workbook.save('cartorios.xlsx')
+
+
 def clicar_elemento(driver, by, value):
     elemento = driver.find_element(by, value)
     driver.execute_script('arguments[0].click()', elemento)
@@ -52,13 +86,21 @@ def clicar_elemento(driver, by, value):
 
 def obter_dados_cartorio(driver):
     try:
-        # Colocando para mostrar o maximo de registros
-        # clicar_elemento(driver, By.XPATH, "//option[@value='100']")
+        # Colocando para mostrar o maximo de registros - NAO CLICOU, TESTAR MAIS
+        # clicar_elemento(driver, By.XPATH, "(//b[normalize-space()='AC'])[1]")
+        # clicar_elemento(driver, By.XPATH, '//*[@id="display_length"]/label/select/option[4]')
         
+        sleep(5)
+        
+        # Verificando a quantidade de cartorios
         quantidade_de_registros = driver.find_elements(By.XPATH, "//tr[contains(@class, 'processo')]")
         
+        # VErificando a cidade atual
         cidade_atual = driver.find_element(By.XPATH, "/html/body/div[2]/div[5]/fieldset/legend/b[1]").text
         print(f'São {len(quantidade_de_registros)} registros para a cidade de {cidade_atual}')
+        
+        estado_atual = driver.find_element(By.XPATH, "(//b[normalize-space()='AC'])[1]").text
+        print(f'Estado atual: {estado_atual}')
         
         print('\n\n')
         
@@ -103,6 +145,9 @@ def obter_dados_cartorio(driver):
                 telefone_e_email = 'Sem Telefone e E-mail'
             
             print('\n\n')
+            
+            # Chamando a funcao para inserir os dados na planilha
+            inserir_dados_planilha(denominacao, responsavel, atribuicoes, endereco, telefone_e_email, estado_atual)
         
         # Verificando se o campo "Seguinte" esta habilitado para mostrar mais cartorios ou nao
         try:
@@ -112,6 +157,9 @@ def obter_dados_cartorio(driver):
             elemento = WebDriverWait(driver, 10).until(EC.element_to_be_clickable(campo_seguinte))
             sleep(2)
             clicar_elemento(driver, By.XPATH, '//a[@class="next fg-button ui-button ui-state-default"]')
+            sleep(5)
+            # Se estiver clicavel, chama a funcao novamente para obter os dados
+            obter_dados_cartorio(driver)
         except NoSuchElementException:
             print('Botão "Seguinte" não encontrado. Avançando para a próxima cidade.')
         
@@ -129,7 +177,7 @@ def processar_estado(driver, estado):
 
     # Verificando quantas cidades tem cada estado
     quantidade_de_cidades = driver.find_elements(By.XPATH, '//option[@value]')
-    print(f'O estado de {estado} possui {len(quantidade_de_cidades)} cidades')
+    print(f'O estado de {estado} possui {len(quantidade_de_cidades) - 1} cidades')
 
     # Entrando em cada cidade de um estado
     for cidade in range(1, len(quantidade_de_cidades)):
