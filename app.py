@@ -75,6 +75,8 @@ def inserir_dados_planilha(denominacao, responsavel, atribuicoes, endereco, tele
             header = sheet[f'{coluna}1']
             header.font = Font(color="FFFFFF", bold=True)
             header.fill = PatternFill(start_color="000000", end_color="000000", fill_type="solid")
+        
+    sheet.append([denominacao, responsavel, atribuicoes, endereco, telefone_e_email])
     
     workbook.save('cartorios.xlsx')
 
@@ -84,7 +86,7 @@ def clicar_elemento(driver, by, value):
     driver.execute_script('arguments[0].click()', elemento)
     
 
-def obter_dados_cartorio(driver):
+def obter_dados_cartorio(driver, estado_atual_main):
     try:
         # Colocando para mostrar o maximo de registros - NAO CLICOU, TESTAR MAIS
         # clicar_elemento(driver, By.XPATH, "(//b[normalize-space()='AC'])[1]")
@@ -95,11 +97,11 @@ def obter_dados_cartorio(driver):
         # Verificando a quantidade de cartorios
         quantidade_de_registros = driver.find_elements(By.XPATH, "//tr[contains(@class, 'processo')]")
         
-        # VErificando a cidade atual
+        # Verificando a cidade atual
         cidade_atual = driver.find_element(By.XPATH, "/html/body/div[2]/div[5]/fieldset/legend/b[1]").text
         print(f'São {len(quantidade_de_registros)} registros para a cidade de {cidade_atual}')
         
-        estado_atual = driver.find_element(By.XPATH, "(//b[normalize-space()='AC'])[1]").text
+        estado_atual = driver.find_element(By.XPATH, f'(//b[normalize-space()=\"{estado_atual_main}\"])[1]').text # (//b[normalize-space()='AC'])[1]
         print(f'Estado atual: {estado_atual}')
         
         print('\n\n')
@@ -157,7 +159,7 @@ def obter_dados_cartorio(driver):
             elemento = WebDriverWait(driver, 10).until(EC.element_to_be_clickable(campo_seguinte))
             sleep(2)
             clicar_elemento(driver, By.XPATH, '//a[@class="next fg-button ui-button ui-state-default"]')
-            sleep(5)
+            sleep(2)
             # Se estiver clicavel, chama a funcao novamente para obter os dados
             obter_dados_cartorio(driver)
         except NoSuchElementException:
@@ -172,6 +174,7 @@ def processar_estado(driver, estado):
     # Entrando no estado
     clicar_elemento(driver, By.XPATH, f'//area[contains(@onclick, "pesquisaServentiasExtra(\'{estado}\')")]')
     print(f'Entrando no estado de {estado}')
+    estado_atual_main = estado
 
     sleep(1)
 
@@ -181,37 +184,37 @@ def processar_estado(driver, estado):
 
     # Entrando em cada cidade de um estado
     for cidade in range(1, len(quantidade_de_cidades)):
-        sleep(2)
+        sleep(1)
         btn_cidade = driver.find_elements(By.XPATH, '//option[@value]')
-        sleep(2)
+        sleep(3)
         # Clicando na cidade
         btn_cidade[cidade].click()
-        sleep(2)
+        sleep(1)
 
         # Clicando no botao pesquisar cidades para ver os cartorios
         clicar_elemento(driver, By.XPATH, '//*[@id="div_cidade"]/div/table/tbody/tr[2]/td/button[1]')
 
-        sleep(3)
+        sleep(1)
 
         # Chamando a funcao para obter os dados de cada cartorio
-        obter_dados_cartorio(driver)
+        obter_dados_cartorio(driver, estado_atual_main)
         
-        sleep(3)
+        sleep(1)
         # Clicando em Extrajudicial para abrir o dropdown
         clicar_elemento(driver, By.XPATH, "(//a[normalize-space()='Extrajudicial'])[1]")
-        sleep(3)
+        sleep(1)
         
         # Clicando em Serventias Extrajudiciais para voltar para os estados
         clicar_elemento(driver, By.XPATH, "(//a[normalize-space()='Serventias Extrajudiciais'])[1]")
-        sleep(3)
+        sleep(1)
         
         # Clicando novamente no estado
         clicar_elemento(driver, By.XPATH, f'//area[contains(@onclick, "pesquisaServentiasExtra(\'{estado}\')")]')
 
 
-    sleep(3)
+    sleep(1)
     clicar_elemento(driver, By.XPATH, "(//a[normalize-space()='Extrajudicial'])[1]")
-    sleep(3)
+    sleep(1)
 
 
 def main():
