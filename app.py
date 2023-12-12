@@ -81,9 +81,16 @@ def inserir_dados_planilha(denominacao, responsavel, atribuicoes, endereco, tele
     workbook.save('cartorios.xlsx')
 
 
-def clicar_elemento(driver, by, value):
-    elemento = driver.find_element(by, value)
-    driver.execute_script('arguments[0].click()', elemento)
+def clicar_elemento(driver, by, value, tempo_limite_espera=10):
+    # elemento = driver.find_element(by, value)
+    # driver.execute_script('arguments[0].click()', elemento)
+    wait = WebDriverWait(driver, tempo_limite_espera)
+    
+    # Aguardar até que o elemento seja clicável
+    elemento = wait.until(EC.element_to_be_clickable((by, value)))
+    
+    # Clicar no elemento
+    elemento.click()
     
 
 def obter_dados_cartorio(driver, estado_atual_main):
