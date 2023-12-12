@@ -47,50 +47,61 @@ def iniciar_driver():
 '''
 
 def inserir_dados_planilha(denominacao, responsavel, atribuicoes, endereco, telefone_e_email, estado_atual):
-
     # Cria ou recarrega o arquivo
     try:
         workbook = load_workbook('cartorios.xlsx')
     except FileNotFoundError:
         # Se o arquivo nao existir, cria um novo
         workbook = Workbook()
-    
-    # Seleciona ou cria uma planilha por estado
-    if estado_atual not in workbook.sheetnames:
+
+    # Verifica se o sheet do estado_atual já existe no arquivo
+    sheet_names = workbook.sheetnames
+    if estado_atual not in sheet_names:
+        # Se não existir, cria um novo sheet
         sheet = workbook.create_sheet(title=estado_atual)
-    else:
-        sheet = workbook[estado_atual]
-    
-    # Criando células do header se a planilha estiver vazia
-    if sheet.max_row == 1:
-        # Criando cedulas do header
-        sheet['A1'] = 'Denominção'
+        
+        # Criando cédulas do header
+        sheet['A1'] = 'Denominação'
         sheet['B1'] = 'Responsável'
         sheet['C1'] = 'Atribuições'
         sheet['D1'] = 'Endereço'
         sheet['E1'] = 'Telefone e E-mail'
         
-        # inserindo estilo ao header
+        # Inserindo estilo ao header
         for coluna in ['A', 'B', 'C', 'D', 'E']:
             header = sheet[f'{coluna}1']
             header.font = Font(color="FFFFFF", bold=True)
             header.fill = PatternFill(start_color="000000", end_color="000000", fill_type="solid")
-        
+    else:
+        # Se já existir, apenas seleciona o sheet existente
+        sheet = workbook[estado_atual]
+
+    # Inserindo os dados na próxima linha disponível
+    linha = sheet.max_row + 1
     sheet.append([denominacao, responsavel, atribuicoes, endereco, telefone_e_email])
-    
+
     workbook.save('cartorios.xlsx')
 
 
-def clicar_elemento(driver, by, value, tempo_limite_espera=10):
-    # elemento = driver.find_element(by, value)
-    # driver.execute_script('arguments[0].click()', elemento)
-    wait = WebDriverWait(driver, tempo_limite_espera)
+def clicar_elemento(driver, by, value, tempo_limite_espera=20):
+    try:
+        wait = WebDriverWait(driver, tempo_limite_espera)
+
+        # Aguardar até que o elemento seja clicável
+        elemento = wait.until(EC.element_to_be_clickable((by, value)))
+
+        # Clicar no elemento
+        elemento.click()
+
+        return elemento
     
-    # Aguardar até que o elemento seja clicável
-    elemento = wait.until(EC.element_to_be_clickable((by, value)))
+    except TimeoutException as te:
+        print(f'Tempo limite de espera ({tempo_limite_espera}s) atingido. Elemento não clicável.')
+        raise te
     
-    # Clicar no elemento
-    elemento.click()
+    except NoSuchElementException as nse:
+        print(f'Elemento não encontrado. Estratégia: {by}, Valor: {value}')
+        raise nse
     
 
 def obter_dados_cartorio(driver, estado_atual_main):
@@ -99,7 +110,7 @@ def obter_dados_cartorio(driver, estado_atual_main):
         # clicar_elemento(driver, By.XPATH, "(//b[normalize-space()='AC'])[1]")
         # clicar_elemento(driver, By.XPATH, '//*[@id="display_length"]/label/select/option[4]')
         
-        sleep(5)
+        sleep(1)
         
         # Verificando a quantidade de cartorios
         quantidade_de_registros = driver.find_elements(By.XPATH, "//tr[contains(@class, 'processo')]")
@@ -113,7 +124,7 @@ def obter_dados_cartorio(driver, estado_atual_main):
         
         print('\n\n')
         
-        sleep(2)
+        # sleep(2)
         
     
         for registro in quantidade_de_registros:
@@ -164,9 +175,9 @@ def obter_dados_cartorio(driver, estado_atual_main):
             
             # Verifica se o campo esta clicavel
             elemento = WebDriverWait(driver, 10).until(EC.element_to_be_clickable(campo_seguinte))
-            sleep(2)
+            # sleep(2)
             clicar_elemento(driver, By.XPATH, '//a[@class="next fg-button ui-button ui-state-default"]')
-            sleep(2)
+            # sleep(2)
             # Se estiver clicavel, chama a funcao novamente para obter os dados
             obter_dados_cartorio(driver)
         except NoSuchElementException:
@@ -201,19 +212,19 @@ def processar_estado(driver, estado):
         # Clicando no botao pesquisar cidades para ver os cartorios
         clicar_elemento(driver, By.XPATH, '//*[@id="div_cidade"]/div/table/tbody/tr[2]/td/button[1]')
 
-        sleep(1)
+        # sleep(1)
 
         # Chamando a funcao para obter os dados de cada cartorio
         obter_dados_cartorio(driver, estado_atual_main)
         
-        sleep(1)
+        # sleep(1)
         # Clicando em Extrajudicial para abrir o dropdown
         clicar_elemento(driver, By.XPATH, "(//a[normalize-space()='Extrajudicial'])[1]")
-        sleep(1)
+        # sleep(1)
         
         # Clicando em Serventias Extrajudiciais para voltar para os estados
         clicar_elemento(driver, By.XPATH, "(//a[normalize-space()='Serventias Extrajudiciais'])[1]")
-        sleep(1)
+        # sleep(1)
         
         # Clicando novamente no estado
         clicar_elemento(driver, By.XPATH, f'//area[contains(@onclick, "pesquisaServentiasExtra(\'{estado}\')")]')
@@ -222,6 +233,7 @@ def processar_estado(driver, estado):
     sleep(1)
     clicar_elemento(driver, By.XPATH, "(//a[normalize-space()='Extrajudicial'])[1]")
     sleep(1)
+    clicar_elemento(driver, By.XPATH, "(//a[normalize-space()='Serventias Extrajudiciais'])[1]")
 
 
 def main():
@@ -233,7 +245,7 @@ def main():
 
     # Clicar no primeiro "clique aqui"
     clicar_elemento(driver, By.XPATH, '//strong[text()="Clique aqui"]')
-    sleep(3)
+    sleep(2)
 
     # Estados brasileiros
     siglas_estados_brasileiros = [
